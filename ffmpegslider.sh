@@ -1,32 +1,86 @@
-# FFMPEGSLIDER SCRIPT (Martin Kaptein | www.sonata8.com)
+## FFMPEGSLIDER SCRIPT (Martin Kaptein | www.sonata8.com)
+## START GITHUB README
+## FFMPEG Bash Video Editor
 #
-# Requirements: ffmpeg, imagemagick
+#A simple bash script to produce a video slideshow based on a text file.
+#Optionally also including a facecam.
 #
-# USAGE EXAMPLE
-# ffmpegslider -a audiosource.mp3 -r 1920x1080 -i input.txt -o output.mp4 (-t facecam)
-# The -t flag is optional.
-# The audiosource depicted by the -a flag can also be a video file; the slideshow duration depends on it.
-# Add the type flag (-t facecam) to add a facecam overlay to the video output.
+### Requirements
 #
-## The -r flag depicts the resolution in the given format
-# for vertical video (9:16) you can set 1080x1920
-# for normal (horizontal) HD set 1920x1080
-# for 4K set to 3840x2160
-
-# INPUT FILE FORMAT
+#ffmpeg, imagemagick
 #
-# < timestamp UNTIL the picture should appear in the video >;< filename OR text (text should start with < | >) >
-# e.g.
+### Installation
 #
-# 00:00:05;pic1.jpg
-# 00:00:10;|Some Text slide
-# 00:00:12;pic2.jpg
+#Add the bash script to your `$path` or copy it over to `/usr/local/bin/`.
+#Don't forget to mark it as excecutable.
 #
-
-while getopts a:r:i:o:t: flag
+#```
+#git clone https://github.com/martinkaptein/slider.git
+#cd slider
+#sudo cp ffmpegslider.sh /usr/local/bin/ffmpegslider
+#sudo chmod +x /usr/local/bin/ffmpegslider
+#```
+#
+### Usage
+#
+#General usage:
+#
+#```
+#ffmpegslider -s audiosource.mp3 -r 1920x1080 -i input.txt -o output.mp4 -t facecam
+#```
+#
+#All the flags except the `-i` flag are optional, as they fall back one sane defaults.
+#
+#`-s` Depicts the source of background audio.
+#This file can be an audio file or video file.
+#Coupled with the `-t facecam` parameter, it can become a facecam video in the top right of the viewport.
+#By default the slideshow length depends on the length of the file.
+#If no file is specified, the slideshow will be silent.
+#In that case you will **need to duplicate the last line** in the `-i input.txt` file.
+#
+#
+#`-r` flag depicts the resolution in the given format, for example:
+#
+#- for vertical video (9:16) you can set 1080x1920
+#- for normal (horizontal) HD set 1920x1080
+#- for 4K set to 3840x2160
+#
+#The default is *1920x1080*.
+#Any resolution and aspect ratio is supported.
+#
+#The mandatory `-i` flag points to the main input file.
+#This is a text file formatted in the following way:
+#
+#### Input file format
+#
+#Format the input.txt file like this:
+#
+#< timestamp UNTIL the picture should appear in the video >;< filename OR text (text should start with < | >) >
+#
+#Example:
+#
+#```
+#00:00:05;pic1.jpg
+#00:00:10;|Some Text slide
+#00:00:12;pic2.jpg
+#```
+#
+#In the example above, pic1 will appear until the 5th second, then, until 10s you will see a text slide, etc..
+#Most image formats are supported, internally they will be converted to jpg anyway.
+#You can customize the text color and background color of the text generation here in the script.
+#
+#***
+#
+#`-o` depicts the output, ffmpeg codecs expect the output to be a `.mp4` file.
+#
+#`-t` is fully optional.
+#Only add it if you want a facecam overlay (assuming `-s` is a video).
+#Pass it in this way: `-t facecam`.
+#END GITHUB README
+while getopts s:r:i:o:t: flag
 do
 	case "${flag}" in
-		a) audioinput=${OPTARG};;
+		s) audiosource=${OPTARG};;
 		r) resolution=${OPTARG};;
 		i) slidemaster=${OPTARG};;
 		o) outputfile=${OPTARG};;
@@ -37,7 +91,11 @@ done
 prevseconds=0
 tmpdir="tmp-$((1 + $RANDOM % 100000))"
 mkdir $tmpdir
+# Defaults
 type=${type:-'noface'}
+resolution=${resolution:-'1920x1080'}
+audiosource=${audiosource:-'noaudio'}
+outputfile=${outputfile:-'script-output.mp4'}
 while read -r xline; do
 	time="${xline%;*}"
 	filetext="${xline#*;}"
@@ -65,11 +123,13 @@ done < "${slidemaster}"
 if [[ "$type" == "facecam" ]]; then
 	height=$(echo "$resolution" | awk -Fx '{ print $2 }')
 	desiredheight=$(($height*1/3))
-	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -i "${audioinput}" -c:a aac -c:v libx264 -r 30 -pix_fmt yuv420p "${tmpdir}/${outputfile}"
-	ffmpeg -i "${audioinput}" -vf "scale=-2:$desiredheight" "${tmpdir}/scaled-facecam.mp4"
+	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -i "${audiosource}" -c:a aac -c:v libx264 -r 30 -pix_fmt yuv420p "${tmpdir}/${outputfile}"
+	ffmpeg -i "${audiosource}" -vf "scale=-2:$desiredheight" "${tmpdir}/scaled-facecam.mp4"
 	ffmpeg -i "${tmpdir}/${outputfile}" -i "${tmpdir}/scaled-facecam.mp4" -filter_complex "overlay=W-w:0" "${outputfile}"
+elif [[ "$audiosource" == "noaudio" ]]; then
+	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -c:v libx264 -r 30 -pix_fmt yuv420p "${outputfile}"
 else
-	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -i "${audioinput}" -c:a aac -c:v libx264 -r 30 -pix_fmt yuv420p "${outputfile}"
+	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -i "${audiosource}" -c:a aac -c:v libx264 -r 30 -pix_fmt yuv420p "${outputfile}"
 fi
 # cleanup
-rm -rf $tmpdir
+#rm -rf $tmpdir

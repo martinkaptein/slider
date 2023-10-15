@@ -26,14 +26,14 @@
 #General usage:
 #
 #```
-#ffmpegslider -s audiosource.mp3 -r 1920x1080 -i input.txt -o output.mp4
+#ffmpegslider -r 1920x1080 -i input.txt -s audiosource.mp3 -o output.mp4
 #```
 #
 #All the flags except the `-i` flag are optional, as they fall back one sane defaults.
 #
 #`-s` Depicts the source of background audio.
 #This file can be an audio file or video file.
-#If the file `-s` is a video file, the script will produce a facecam-style output with the video as an overlay on the top right.
+#If the file is a video file, the script will produce a facecam-style output with the video as an overlay on the top right.
 #By default the slideshow length depends on the length of the file.
 #If no file is specified, the slideshow will be silent.
 #In that case you will **need to duplicate the last line** in the `-i input.txt` file.
@@ -111,7 +111,7 @@ while read -r xline; do
 	fi
 	echo "duration $duration" >> $tmpdir/ffmpeg.txt
 done < "${slidemaster}"
-# build the video
+# build the video, if audiosource is video too make it an overlay
 if [[ "$audiosource" =~ .*\.(mov|mp4|mkv) ]]; then
 	height=$(echo "$resolution" | awk -Fx '{ print $2 }')
 	desiredheight=$(($height*1/3))
@@ -125,4 +125,4 @@ else
 	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -i "${audiosource}" -c:a aac -c:v libx264 -r 30 -pix_fmt yuv420p "${outputfile}"
 fi
 # cleanup
-#rm -rf $tmpdir
+rm -rf $tmpdir

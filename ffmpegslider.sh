@@ -1,3 +1,4 @@
+#!/bin/bash
 ## FFMPEGSLIDER SCRIPT (Martin Kaptein | www.sonata8.com)
 ## START GITHUB README
 ## FFMPEG Bash Video Editor

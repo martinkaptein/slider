@@ -106,9 +106,14 @@ while read -r xline; do
 		convert -size "${resolution}" -background "#091d28" -fill "#F7EBEC" -pointsize "80" -gravity center caption:"$text" "$tmpdir/$filename"
 		echo "file '$filename'" >> $tmpdir/ffmpeg.txt
 	else
-		# convert image to jpg & right size, save it in ./tmp
-		convert $filetext -resize "${resolution}" -background "#091d28" -gravity center -extent "${resolution}" "${tmpdir}/${filetext}.jpg"
-		echo "file '${filetext}.jpg'" >> $tmpdir/ffmpeg.txt
+		# If no file skip that one
+		if [ ! -f $filetext ]; then
+			echo "File < $filetext > not found!"
+		else
+			# convert image to jpg & right size, save it in ./tmp
+			convert $filetext -resize "${resolution}" -background "#091d28" -gravity center -extent "${resolution}" "${tmpdir}/${filetext}.jpg"
+			echo "file '${filetext}.jpg'" >> $tmpdir/ffmpeg.txt
+		fi
 	fi
 	echo "duration $duration" >> $tmpdir/ffmpeg.txt
 done < "${slidemaster}"
@@ -121,6 +126,7 @@ if [[ "$audiosource" =~ .*\.(mov|mp4|mkv) ]]; then
 	#ffmpeg -i "${tmpdir}/${outputfile}" -i "${tmpdir}/scaled-facecam.mp4" -filter_complex "overlay=W-w:0" "${outputfile}"
 	ffmpeg -i "${audiosource}" -i "${tmpdir}/${outputfile}" -filter_complex "[0]scale=-2:$desiredheight[scaled];[1][scaled]overlay=W-w:0" -c:a aac -c:v libx264 -r 30 -pix_fmt yuv420p "${outputfile}"
 elif [[ "$audiosource" == "noaudio" ]]; then
+	echo "No audio source detected, make sure you have duplicated the last line in $slidemaster"
 	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -c:v libx264 -r 30 -pix_fmt yuv420p "${outputfile}"
 else
 	ffmpeg -f concat -i $tmpdir/ffmpeg.txt -i "${audiosource}" -c:a aac -c:v libx264 -r 30 -pix_fmt yuv420p "${outputfile}"
